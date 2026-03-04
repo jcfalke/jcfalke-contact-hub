@@ -66,19 +66,15 @@ function maybeEnableButtons() {
   }
 }
 
-// Bind custom login button
-document.addEventListener('DOMContentLoaded', () => {
-  const googleLoginBtn = document.getElementById('googleLoginBtn');
-  if (googleLoginBtn) {
-    googleLoginBtn.addEventListener('click', handleAuthClick);
-  }
-});
+// Make handleAuthClick global so it can be called directly
+window.handleAuthClick = async function (event) {
+  if (event) event.preventDefault();
 
-async function handleAuthClick(event) {
   if (!CLIENT_ID || CLIENT_ID === 'YOUR_CLIENT_ID_HERE') {
     alert("Please set up the Google Cloud CLIENT_ID in main.js and index.html first. Use 'Developer Login' to bypass API for now.");
     return;
   }
+
 
   tokenClient.callback = async (resp) => {
     if (resp.error !== undefined) {

@@ -28,6 +28,32 @@ const loadingSpinner = document.getElementById('loading');
 export function initApp() {
   bindEvents();
 
+  // Expose to window immediately for inline HTML onclick to work despite ES module isolation
+  window.handleAuthClick = async function (event) {
+    if (event) event.preventDefault();
+
+    if (!CLIENT_ID || CLIENT_ID === 'YOUR_CLIENT_ID_HERE') {
+      alert("Please set up the Google Cloud CLIENT_ID in main.js and index.html first. Use 'Developer Login' to bypass API for now.");
+      return;
+    }
+
+    tokenClient.callback = async (resp) => {
+      if (resp.error !== undefined) {
+        throw (resp);
+      }
+      document.getElementById('loginScreen').classList.add('hidden');
+      document.getElementById('app').classList.remove('hidden');
+      document.getElementById('userName').innerText = "Authorized User";
+      await fetchContacts();
+    };
+
+    if (gapi.client.getToken() === null) {
+      tokenClient.requestAccessToken({ prompt: 'consent' });
+    } else {
+      tokenClient.requestAccessToken({ prompt: '' });
+    }
+  };
+
   // Expose Google API callbacks to global scope for the native scripts to find
   window.gapiLoaded = async () => {
     try {
@@ -63,33 +89,6 @@ function maybeEnableButtons() {
   if (gapiInited && gisInited) {
     const gsBtn = document.getElementById('googleLoginBtn');
     if (gsBtn) gsBtn.style.opacity = '1';
-  }
-}
-
-// Make handleAuthClick global so it can be called directly
-window.handleAuthClick = async function (event) {
-  if (event) event.preventDefault();
-
-  if (!CLIENT_ID || CLIENT_ID === 'YOUR_CLIENT_ID_HERE') {
-    alert("Please set up the Google Cloud CLIENT_ID in main.js and index.html first. Use 'Developer Login' to bypass API for now.");
-    return;
-  }
-
-
-  tokenClient.callback = async (resp) => {
-    if (resp.error !== undefined) {
-      throw (resp);
-    }
-    document.getElementById('loginScreen').classList.add('hidden');
-    document.getElementById('app').classList.remove('hidden');
-    document.getElementById('userName').innerText = "Authorized User";
-    await fetchContacts();
-  };
-
-  if (gapi.client.getToken() === null) {
-    tokenClient.requestAccessToken({ prompt: 'consent' });
-  } else {
-    tokenClient.requestAccessToken({ prompt: '' });
   }
 }
 

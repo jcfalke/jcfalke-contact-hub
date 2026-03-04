@@ -61,23 +61,17 @@ export function initApp() {
 
 function maybeEnableButtons() {
   if (gapiInited && gisInited) {
-    const gsBtn = document.querySelector('.g_id_signin');
+    const gsBtn = document.getElementById('googleLoginBtn');
     if (gsBtn) gsBtn.style.opacity = '1';
-
-    // Auto-prompt OAuth if desired, or let user click standard sign-in button
-    // The standard sign-in UI from GIS will handle the visual rendering.
   }
 }
 
 // Bind custom login button
 document.addEventListener('DOMContentLoaded', () => {
-  // Wait a moment for Google script to render standard sign-in button
-  setTimeout(() => {
-    const actualGoogleBtn = document.querySelector('.g_id_signin div[role="button"]');
-    if (actualGoogleBtn) {
-      actualGoogleBtn.addEventListener('click', handleAuthClick);
-    }
-  }, 1000);
+  const googleLoginBtn = document.getElementById('googleLoginBtn');
+  if (googleLoginBtn) {
+    googleLoginBtn.addEventListener('click', handleAuthClick);
+  }
 });
 
 async function handleAuthClick(event) {

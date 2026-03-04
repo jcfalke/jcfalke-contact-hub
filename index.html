@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JCFalke Contact Hub</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+  <!-- App Container -->
+  <div id="app" class="hidden">
+    <header class="glass-header">
+      <div class="header-left">
+        <div class="logo">
+          <div class="logo-icon">JH</div>
+          <h1>JCFalke Contact Hub</h1>
+        </div>
+      </div>
+      <div class="header-right">
+        <div class="user-profile">
+          <img id="userAvatar" src="https://ui-avatars.com/api/?name=User&background=random" alt="User Avatar"
+            class="avatar">
+          <span id="userName">User</span>
+        </div>
+        <button id="signOutBtn" class="btn btn-outline">Sign Out</button>
+      </div>
+    </header>
+
+    <main class="main-content">
+      <div class="toolbar glass-panel">
+        <div class="search-wrap">
+          <input type="text" id="searchInput" placeholder="Search contacts by name, company, or country..."
+            class="input search-input">
+        </div>
+
+        <div class="filter-wrap">
+          <select id="typeFilter" class="input filter-select">
+            <option value="All">All Types</option>
+            <option value="Client">Client</option>
+            <option value="Supplier">Supplier</option>
+          </select>
+        </div>
+
+        <div class="actions-wrap">
+          <button id="btnPasteContact" class="btn btn-secondary">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>
+            Paste Info
+          </button>
+          <button id="btnAddContact" class="btn btn-primary">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            Add Contact
+          </button>
+        </div>
+      </div>
+
+      <div id="loading" class="loading-spinner hidden">
+        <div class="spinner"></div>
+      </div>
+
+      <div class="contacts-grid" id="contactsGrid">
+        <!-- Contacts injected here -->
+      </div>
+    </main>
+  </div>
+
+  <!-- Login Screen -->
+  <div id="loginScreen" class="login-screen">
+    <div class="login-card glass-panel">
+      <div class="logo-large">
+        <div class="logo-icon large">JH</div>
+      </div>
+      <h2>Welcome Back</h2>
+      <p>Sign in to access the JCFalke Contact Hub and sync with Google Sheets.</p>
+      <div id="g_id_onload" data-client_id="426683158199-u0u1dh5o9m99phbk92r4dne8lgd0vmvp.apps.googleusercontent.com"
+        data-context="signin" data-ux_mode="popup" data-callback="handleCredentialResponse" data-auto_prompt="false">
+      </div>
+      <div class="g_id_signin" data-type="standard" data-shape="pill" data-theme="outline" data-text="signin_with"
+        data-size="large" data-logo_alignment="left">
+      </div>
+      <!-- Placeholder button while Client ID is missing -->
+      <button id="devLoginBtn" class="btn btn-primary mt-4 w-full">Developer Login (Bypass API)</button>
+    </div>
+  </div>
+
+  <!-- Modals -->
+
+  <!-- Add Contact Modal -->
+  <div id="addModal" class="modal-overlay hidden">
+    <div class="modal glass-panel">
+      <div class="modal-header">
+        <h3 id="modalTitle">Add New Contact</h3>
+        <button class="close-btn" id="btnCloseAddModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="contactForm" class="contact-form">
+          <input type="hidden" id="contactRowIndex">
+
+          <div class="form-group">
+            <label>Name</label>
+            <input type="text" id="fName" class="input" required>
+          </div>
+
+          <div class="form-group">
+            <label>Company</label>
+            <input type="text" id="fCompany" class="input" required>
+          </div>
+
+          <div class="form-group">
+            <label>Email</label>
+            <input type="email" id="fEmail" class="input" required>
+          </div>
+
+          <div class="form-group">
+            <label>Phone</label>
+            <input type="text" id="fPhone" class="input">
+          </div>
+
+          <div class="form-group">
+            <label>Type</label>
+            <select id="fType" class="input">
+              <option value="Client">Client</option>
+              <option value="Supplier">Supplier</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Country</label>
+            <input type="text" id="fCountry" class="input">
+          </div>
+
+          <div class="form-group">
+            <label>Year Registered</label>
+            <input type="number" id="fYear" class="input" min="1900" max="2100" placeholder="e.g. 2024">
+          </div>
+
+          <div class="form-group">
+            <label>Last Verified</label>
+            <input type="date" id="fVerified" class="input">
+          </div>
+
+          <div class="form-group full-width">
+            <label>Notes</label>
+            <textarea id="fNotes" class="input textarea" rows="3"></textarea>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button id="btnCancelAdd" class="btn btn-outline">Cancel</button>
+        <button id="btnSaveContact" class="btn btn-primary">Save to Drive</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Paste Contact Modal -->
+  <div id="pasteModal" class="modal-overlay hidden">
+    <div class="modal glass-panel">
+      <div class="modal-header">
+        <h3>Paste Contact Info</h3>
+        <button class="close-btn" id="btnClosePasteModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="text-sm text-gray mb-3">Paste a block of text (e.g. from an email signature) and we will try to
+          extract the details.</p>
+        <textarea id="pasteInput" class="input textarea mb-3" rows="6"
+          placeholder="John Doe&#10;Acme Corp&#10;john@acme.com&#10;+1 (555) 123-4567"></textarea>
+      </div>
+      <div class="modal-footer">
+        <button id="btnCancelPaste" class="btn btn-outline">Cancel</button>
+        <button id="btnParsePaste" class="btn btn-secondary">Extract & Review</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Google Identity and APIs -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script src="https://apis.google.com/js/api.js" async defer></script>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+
+</html>

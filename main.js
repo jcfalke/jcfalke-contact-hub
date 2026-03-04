@@ -53,7 +53,6 @@ export function initApp() {
       tokenClient.requestAccessToken({ prompt: '' });
     }
   };
-
   // Expose Google API callbacks to global scope for the native scripts to find
   window.gapiLoaded = async () => {
     try {

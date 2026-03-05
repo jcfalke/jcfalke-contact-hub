@@ -330,7 +330,9 @@ function isVerifiedRecently(dateString) {
 function renderContacts(data) {
   contactsGrid.innerHTML = '';
   data.forEach(contact => {
-    const badgeClass = contact.type === 'Client' ? 'badge-client' : 'badge-supplier';
+    let badgeClass = 'badge-client';
+    if (contact.type === 'Supplier') badgeClass = 'badge-supplier';
+    if (contact.type === 'Supply') badgeClass = 'badge-supply';
 
     const card = document.createElement('div');
     card.className = 'contact-card glass-panel';

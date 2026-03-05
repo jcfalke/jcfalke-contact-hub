@@ -273,10 +273,6 @@ body {
   background: var(--primary);
 }
 
-.contact-card[data-type="Supply"]::before {
-  background: var(--secondary);
-}
-
 .contact-header {
   display: flex;
   justify-content: space-between;
@@ -311,11 +307,6 @@ body {
 .badge-supplier {
   background: rgba(139, 92, 246, 0.15);
   color: #a78bfa;
-}
-
-.badge-supply {
-  background: rgba(59, 130, 246, 0.15);
-  color: var(--secondary);
 }
 
 .contact-details {

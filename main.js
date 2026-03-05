@@ -114,7 +114,7 @@ async function fetchContacts() {
 
     const response = await gapi.client.sheets.spreadsheets.values.get({
       spreadsheetId: SPREADSHEET_ID,
-      range: 'Sheet1!A2:G', // Adjust 'Sheet1' if needed
+      range: 'Sheet1!A2:J', // Adjust 'Sheet1' if needed
     });
 
     const range = response.result;
@@ -132,7 +132,8 @@ async function fetchContacts() {
         country: row[5] || '',
         notes: row[6] || '',
         year: row[7] || '',
-        verified: row[8] || ''
+        verified: row[8] || '',
+        supply: row[9] || ''
       }));
     }
     renderContacts(currentContacts);
@@ -157,7 +158,8 @@ async function saveContactToSheet(contactData, rowId) {
       contactData.country,
       contactData.notes,
       contactData.year,
-      contactData.verified
+      contactData.verified,
+      contactData.supply
     ]
   ];
   const body = { values: values };
@@ -168,7 +170,7 @@ async function saveContactToSheet(contactData, rowId) {
       // Update existing
       await gapi.client.sheets.spreadsheets.values.update({
         spreadsheetId: SPREADSHEET_ID,
-        range: `Sheet1!A${rowId}:I${rowId}`,
+        range: `Sheet1!A${rowId}:J${rowId}`,
         valueInputOption: 'USER_ENTERED',
         resource: body,
       });
@@ -176,7 +178,7 @@ async function saveContactToSheet(contactData, rowId) {
       // Append new
       await gapi.client.sheets.spreadsheets.values.append({
         spreadsheetId: SPREADSHEET_ID,
-        range: 'Sheet1!A2:I',
+        range: 'Sheet1!A2:J',
         valueInputOption: 'USER_ENTERED',
         resource: body,
       });
@@ -244,6 +246,7 @@ function bindEvents() {
       phone: document.getElementById('fPhone').value || '',
       type: document.getElementById('fType').value || 'Client',
       country: document.getElementById('fCountry').value || '',
+      supply: document.getElementById('fSupply').value || '',
       notes: document.getElementById('fNotes').value || '',
       year: document.getElementById('fYear').value || new Date().getFullYear().toString(),
       verified: document.getElementById('fVerified').value || new Date().toISOString().split('T')[0]
@@ -302,6 +305,7 @@ function bindEvents() {
       document.getElementById('fEmail').value = parsed.email || '';
       document.getElementById('fPhone').value = parsed.phone || '';
       document.getElementById('fCompany').value = parsed.company || '';
+      document.getElementById('fSupply').value = '';
       document.getElementById('fNotes').value = rawData;
 
       const currentYear = new Date().getFullYear();
@@ -330,9 +334,7 @@ function isVerifiedRecently(dateString) {
 function renderContacts(data) {
   contactsGrid.innerHTML = '';
   data.forEach(contact => {
-    let badgeClass = 'badge-client';
-    if (contact.type === 'Supplier') badgeClass = 'badge-supplier';
-    if (contact.type === 'Supply') badgeClass = 'badge-supply';
+    const badgeClass = contact.type === 'Client' ? 'badge-client' : 'badge-supplier';
 
     const card = document.createElement('div');
     card.className = 'contact-card glass-panel';
@@ -363,6 +365,10 @@ function renderContacts(data) {
                         <svg class="detail-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
                         <span>${contact.country || 'N/A'}</span>
                     </div>
+                    <div class="detail-row">
+                        <svg class="detail-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+                        <span>${contact.supply || 'No item specified'}</span>
+                    </div>
                     <div class="detail-row" style="margin-top: 0.5rem; justify-content: space-between;">
                         <small style="color: var(--text-muted)">Est. ${contact.year || 'N/A'}</small>
                         <small style="color: ${isVerifiedRecently(contact.verified) ? 'var(--success)' : 'var(--danger)'}">
@@ -381,6 +387,7 @@ function renderContacts(data) {
       document.getElementById('fEmail').value = contact.email;
       document.getElementById('fPhone').value = contact.phone || '';
       document.getElementById('fType').value = contact.type;
+      document.getElementById('fSupply').value = contact.supply || '';
       document.getElementById('fCountry').value = contact.country || '';
       document.getElementById('fNotes').value = contact.notes || '';
       document.getElementById('fYear').value = contact.year || '';

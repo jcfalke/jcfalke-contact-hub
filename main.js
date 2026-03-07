@@ -114,7 +114,7 @@ async function fetchContacts() {
 
     const response = await gapi.client.sheets.spreadsheets.values.get({
       spreadsheetId: SPREADSHEET_ID,
-      range: 'Contacts!A2:J', // Adjust tab name if needed
+      range: 'Contacts!A2:K', // Adjust tab name if needed
     });
 
     const range = response.result;

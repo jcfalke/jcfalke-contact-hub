@@ -130,10 +130,11 @@ async function fetchContacts() {
         phone: row[3] || '',
         type: row[4] || 'Client',
         country: row[5] || '',
-        notes: row[6] || '',
-        year: row[7] || '',
-        verified: row[8] || '',
-        supply: row[9] || ''
+        address: row[6] || '',
+        notes: row[7] || '',
+        year: row[8] || '',
+        verified: row[9] || '',
+        supply: row[10] || ''
       }));
     }
     renderContacts(currentContacts);
@@ -156,6 +157,7 @@ async function saveContactToSheet(contactData, rowId) {
       contactData.phone,
       contactData.type,
       contactData.country,
+      contactData.address,
       contactData.notes,
       contactData.year,
       contactData.verified,
@@ -170,7 +172,7 @@ async function saveContactToSheet(contactData, rowId) {
       // Update existing
       await gapi.client.sheets.spreadsheets.values.update({
         spreadsheetId: SPREADSHEET_ID,
-        range: `Sheet1!A${rowId}:J${rowId}`,
+        range: `Sheet1!A${rowId}:K${rowId}`,
         valueInputOption: 'USER_ENTERED',
         resource: body,
       });
@@ -178,7 +180,7 @@ async function saveContactToSheet(contactData, rowId) {
       // Append new
       await gapi.client.sheets.spreadsheets.values.append({
         spreadsheetId: SPREADSHEET_ID,
-        range: 'Sheet1!A2:J',
+        range: 'Sheet1!A2:K',
         valueInputOption: 'USER_ENTERED',
         resource: body,
       });
@@ -201,7 +203,7 @@ function bindEvents() {
     loginScreen.classList.add('hidden');
     appDiv.classList.remove('hidden');
     currentContacts = [
-      { id: 2, name: 'Alice Walker', company: 'Acme Corp', email: 'alice@acme.com', phone: '+1 555-0102', type: 'Client', country: 'USA', notes: 'Key account Q3.' }
+      { id: 2, name: 'Alice Walker', company: 'Acme Corp', email: 'alice@acme.com', phone: '+1 555-0102', type: 'Client', country: 'USA', address: '123 Acme Way, NY', notes: 'Key account Q3.' }
     ];
     renderContacts(currentContacts);
   });
@@ -246,6 +248,7 @@ function bindEvents() {
       phone: document.getElementById('fPhone').value || '',
       type: document.getElementById('fType').value || 'Client',
       country: document.getElementById('fCountry').value || '',
+      address: document.getElementById('fAddress').value || '',
       supply: document.getElementById('fSupply').value || '',
       notes: document.getElementById('fNotes').value || '',
       year: document.getElementById('fYear').value || new Date().getFullYear().toString(),
@@ -283,6 +286,7 @@ function bindEvents() {
       const matchSearch = c.name.toLowerCase().includes(term) ||
         c.company.toLowerCase().includes(term) ||
         c.country.toLowerCase().includes(term) ||
+        c.address.toLowerCase().includes(term) ||
         c.email.toLowerCase().includes(term);
       const matchType = type === 'All' ? true : c.type === type;
       return matchSearch && matchType;
@@ -305,6 +309,7 @@ function bindEvents() {
       document.getElementById('fEmail').value = parsed.email || '';
       document.getElementById('fPhone').value = parsed.phone || '';
       document.getElementById('fCompany').value = parsed.company || '';
+      document.getElementById('fAddress').value = parsed.address || '';
       document.getElementById('fSupply').value = '';
       document.getElementById('fNotes').value = rawData;
 
@@ -366,6 +371,10 @@ function renderContacts(data) {
                         <span>${contact.country || 'N/A'}</span>
                     </div>
                     <div class="detail-row">
+                        <svg class="detail-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                        <span>${contact.address || 'N/A'}</span>
+                    </div>
+                    <div class="detail-row">
                         <svg class="detail-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
                         <span>${contact.supply || 'No item specified'}</span>
                     </div>
@@ -389,6 +398,7 @@ function renderContacts(data) {
       document.getElementById('fType').value = contact.type;
       document.getElementById('fSupply').value = contact.supply || '';
       document.getElementById('fCountry').value = contact.country || '';
+      document.getElementById('fAddress').value = contact.address || '';
       document.getElementById('fNotes').value = contact.notes || '';
       document.getElementById('fYear').value = contact.year || '';
       document.getElementById('fVerified').value = contact.verified || '';

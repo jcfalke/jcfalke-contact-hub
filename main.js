@@ -114,7 +114,7 @@ async function fetchContacts() {
 
     const response = await gapi.client.sheets.spreadsheets.values.get({
       spreadsheetId: SPREADSHEET_ID,
-      range: 'Sheet1!A2:J', // Adjust 'Sheet1' if needed
+      range: 'Contacts!A2:J', // Adjust tab name if needed
     });
 
     const range = response.result;
@@ -172,7 +172,7 @@ async function saveContactToSheet(contactData, rowId) {
       // Update existing
       await gapi.client.sheets.spreadsheets.values.update({
         spreadsheetId: SPREADSHEET_ID,
-        range: `Sheet1!A${rowId}:K${rowId}`,
+        range: `Contacts!A${rowId}:K${rowId}`,
         valueInputOption: 'USER_ENTERED',
         resource: body,
       });
@@ -180,7 +180,7 @@ async function saveContactToSheet(contactData, rowId) {
       // Append new
       await gapi.client.sheets.spreadsheets.values.append({
         spreadsheetId: SPREADSHEET_ID,
-        range: 'Sheet1!A2:K',
+        range: 'Contacts!A2:K',
         valueInputOption: 'USER_ENTERED',
         resource: body,
       });

@@ -129,8 +129,8 @@ async function fetchContacts() {
         email: row[2] || '',
         phone: row[3] || '',
         type: row[4] || 'Client',
-        country: row[5] || '',
-        address: row[6] || '',
+        address: row[5] || '', // Column F
+        country: row[6] || '', // Column G
         notes: row[7] || '',
         year: row[8] || '',
         verified: row[9] || '',
@@ -156,8 +156,8 @@ async function saveContactToSheet(contactData, rowId) {
       contactData.email,
       contactData.phone,
       contactData.type,
-      contactData.country,
       contactData.address,
+      contactData.country,
       contactData.notes,
       contactData.year,
       contactData.verified,

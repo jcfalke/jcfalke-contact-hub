@@ -4,1170 +4,216 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>JCFalke Estimate Generator</title>
+  <title>JCFalke Contact Hub</title>
 
-  <!-- Load React. -->
-  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
-  <!-- Load Babel -->
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-
-  <!-- Google Identity & API -->
-  <script src="https://accounts.google.com/gsi/client" async defer></script>
-  <script src="https://apis.google.com/js/api.js" async defer></script>
+  <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
-  <div id="root"></div>
 
-  <script type="text/babel">
-    const { useState, useRef, useCallback, useEffect } = React;
-    const STYLES = `
-  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
-
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-  :root {
-    --ink: #0d1117;
-    --ink2: #1c2431;
-    --steel: #2a3a52;
-    --mid: #4a6080;
-    --muted: #8a9ab0;
-    --border: #d0d8e4;
-    --surface: #f4f6fa;
-    --white: #ffffff;
-    --orange: #e8520a;
-    --orange2: #ff6b1a;
-    --gold: #f5a623;
-    --green: #1a7a4a;
-    --red: #c0392b;
-    --shadow: 0 2px 12px rgba(13,17,23,0.10);
-    --shadow-lg: 0 8px 40px rgba(13,17,23,0.18);
-  }
-
-  body { font-family: 'DM Sans', sans-serif; background: var(--surface); color: var(--ink); }
-
-  .app {
-    min-height: 100vh;
-    background: var(--ink);
-    position: relative;
-    overflow-x: hidden;
-  }
-
-  /* Diagonal background texture */
-  .app::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background:
-      repeating-linear-gradient(
-        -45deg,
-        transparent,
-        transparent 40px,
-        rgba(255,255,255,0.012) 40px,
-        rgba(255,255,255,0.012) 41px
-      );
-    pointer-events: none;
-    z-index: 0;
-  }
-
-  .header {
-    position: relative;
-    z-index: 10;
-    border-bottom: 1px solid rgba(255,255,255,0.08);
-    background: rgba(13,17,23,0.95);
-    backdrop-filter: blur(12px);
-    padding: 0 40px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    height: 64px;
-  }
-
-  .logo-group { display: flex; align-items: center; gap: 14px; }
-  .logo-mark {
-    width: 36px; height: 36px;
-    background: var(--orange);
-    clip-path: polygon(0 0, 100% 0, 100% 70%, 70% 100%, 0 100%);
-    display: flex; align-items: center; justify-content: center;
-  }
-  .logo-mark span { font-family: 'Bebas Neue', sans-serif; font-size: 15px; color: white; letter-spacing: 1px; margin-left: 2px; }
-  .logo-text { font-family: 'Bebas Neue', sans-serif; font-size: 22px; color: white; letter-spacing: 3px; }
-  .logo-sub { font-size: 10px; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; }
-  .header-badge {
-    background: rgba(232,82,10,0.15);
-    border: 1px solid rgba(232,82,10,0.35);
-    color: var(--orange2);
-    font-size: 10px;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    padding: 4px 12px;
-    border-radius: 2px;
-    font-family: 'DM Mono', monospace;
-  }
-
-  .main {
-    position: relative; z-index: 2;
-    max-width: 1100px;
-    margin: 0 auto;
-    padding: 40px 24px 80px;
-  }
-
-  .page-title {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: clamp(36px, 6vw, 64px);
-    color: white;
-    letter-spacing: 4px;
-    line-height: 1;
-    margin-bottom: 8px;
-  }
-  .page-title span { color: var(--orange); }
-  .page-subtitle { color: var(--muted); font-size: 14px; letter-spacing: 1px; margin-bottom: 48px; }
-
-  /* Steps */
-  .steps-row { display: flex; gap: 8px; margin-bottom: 40px; }
-  .step-pill {
-    display: flex; align-items: center; gap: 8px;
-    padding: 6px 14px;
-    border-radius: 2px;
-    font-size: 11px;
-    font-family: 'DM Mono', monospace;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    border: 1px solid;
-    transition: all 0.2s;
-    cursor: default;
-  }
-  .step-pill.active { background: var(--orange); border-color: var(--orange); color: white; }
-  .step-pill.done { background: rgba(26,122,74,0.15); border-color: var(--green); color: #4caf80; }
-  .step-pill.pending { background: transparent; border-color: rgba(255,255,255,0.12); color: var(--muted); }
-  .step-num { font-weight: 600; }
-
-  /* Card */
-  .card {
-    background: var(--white);
-    border-radius: 4px;
-    border: 1px solid var(--border);
-    margin-bottom: 24px;
-    overflow: hidden;
-    box-shadow: var(--shadow);
-  }
-  .card-header {
-    background: var(--ink2);
-    padding: 14px 24px;
-    display: flex; align-items: center; gap: 12px;
-  }
-  .card-header-icon {
-    width: 28px; height: 28px;
-    background: var(--orange);
-    border-radius: 2px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 13px; color: white;
-  }
-  .card-header h3 { font-family: 'Bebas Neue', sans-serif; font-size: 16px; color: white; letter-spacing: 2px; }
-  .card-header span { font-size: 11px; color: var(--muted); margin-left: auto; font-family: 'DM Mono', monospace; }
-  .card-body { padding: 24px; }
-
-  /* Grid */
-  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
-  @media (max-width: 640px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
-
-  .field { display: flex; flex-direction: column; gap: 6px; }
-  .field label { font-size: 11px; font-family: 'DM Mono', monospace; letter-spacing: 1.5px; text-transform: uppercase; color: var(--mid); font-weight: 500; }
-  .field input, .field select, .field textarea {
-    border: 1.5px solid var(--border);
-    border-radius: 3px;
-    padding: 9px 12px;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 14px;
-    color: var(--ink);
-    background: var(--surface);
-    transition: border-color 0.15s, box-shadow 0.15s;
-    outline: none;
-  }
-  .field input:focus, .field select:focus, .field textarea:focus {
-    border-color: var(--orange);
-    box-shadow: 0 0 0 3px rgba(232,82,10,0.1);
-    background: white;
-  }
-  .field input::placeholder { color: var(--muted); }
-  .field textarea { resize: vertical; min-height: 72px; }
-
-  /* Drop zone */
-  .drop-zone {
-    border: 2px dashed var(--border);
-    border-radius: 4px;
-    padding: 48px 24px;
-    text-align: center;
-    cursor: pointer;
-    transition: all 0.2s;
-    background: var(--surface);
-    position: relative;
-  }
-  .drop-zone:hover, .drop-zone.drag-over {
-    border-color: var(--orange);
-    background: rgba(232,82,10,0.04);
-  }
-  .drop-zone.has-file {
-    border-color: var(--green);
-    background: rgba(26,122,74,0.04);
-    border-style: solid;
-  }
-  .drop-icon { font-size: 40px; margin-bottom: 12px; display: block; }
-  .drop-title { font-family: 'Bebas Neue', sans-serif; font-size: 20px; letter-spacing: 2px; color: var(--ink); margin-bottom: 6px; }
-  .drop-sub { font-size: 13px; color: var(--muted); }
-  .drop-file-info {
-    display: flex; align-items: center; justify-content: center; gap: 10px;
-    font-family: 'DM Mono', monospace; font-size: 13px; color: var(--green);
-    margin-top: 8px;
-  }
-  .drop-file-remove {
-    background: none; border: none; cursor: pointer;
-    color: var(--red); font-size: 16px; padding: 2px 6px;
-    border-radius: 2px; transition: background 0.15s;
-  }
-  .drop-file-remove:hover { background: rgba(192,57,43,0.1); }
-
-  /* Markup row */
-  .markup-row { display: flex; align-items: center; gap: 16px; margin-top: 16px; }
-  .markup-row label { font-size: 12px; color: var(--mid); font-family: 'DM Mono', monospace; letter-spacing: 1px; white-space: nowrap; }
-  .markup-input-wrap { display: flex; align-items: center; gap: 0; }
-  .markup-input-wrap input {
-    width: 72px; text-align: center;
-    border: 1.5px solid var(--border);
-    border-right: none; border-radius: 3px 0 0 3px;
-    padding: 8px 10px; font-size: 14px; font-family: 'DM Mono', monospace;
-    background: var(--surface); outline: none;
-    transition: border-color 0.15s;
-  }
-  .markup-input-wrap input:focus { border-color: var(--orange); }
-  .markup-unit {
-    background: var(--steel); color: white; padding: 8px 10px;
-    font-size: 13px; border-radius: 0 3px 3px 0; font-family: 'DM Mono', monospace;
-  }
-  .currency-row { display: flex; gap: 8px; margin-top: 16px; }
-  .currency-btn {
-    padding: 6px 16px; border: 1.5px solid var(--border); border-radius: 2px;
-    background: none; cursor: pointer; font-family: 'DM Mono', monospace; font-size: 12px;
-    color: var(--mid); transition: all 0.15s; letter-spacing: 1px;
-  }
-  .currency-btn.active { background: var(--ink2); border-color: var(--ink2); color: white; }
-
-  /* Generate button */
-  .gen-btn {
-    width: 100%;
-    padding: 18px;
-    background: var(--orange);
-    border: none;
-    border-radius: 3px;
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 20px;
-    letter-spacing: 4px;
-    color: white;
-    cursor: pointer;
-    transition: all 0.2s;
-    display: flex; align-items: center; justify-content: center; gap: 12px;
-    position: relative; overflow: hidden;
-    margin-top: 8px;
-  }
-  .gen-btn:hover:not(:disabled) { background: var(--orange2); transform: translateY(-1px); box-shadow: 0 6px 24px rgba(232,82,10,0.4); }
-  .gen-btn:active:not(:disabled) { transform: translateY(0); }
-  .gen-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-  .gen-btn-shine {
-    position: absolute; inset: 0;
-    background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.15) 50%, transparent 100%);
-    transform: translateX(-100%);
-    animation: shine 2s infinite;
-  }
-  @keyframes shine { to { transform: translateX(200%); } }
-
-  /* Loading */
-  .loading-card {
-    background: var(--ink2);
-    border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 4px;
-    padding: 48px 24px;
-    text-align: center;
-    color: white;
-    margin-bottom: 24px;
-  }
-  .loading-title { font-family: 'Bebas Neue', sans-serif; font-size: 28px; letter-spacing: 3px; margin-bottom: 8px; }
-  .loading-sub { color: var(--muted); font-size: 13px; margin-bottom: 32px; }
-  .progress-bar-wrap { background: rgba(255,255,255,0.08); border-radius: 2px; height: 4px; overflow: hidden; max-width: 400px; margin: 0 auto 16px; }
-  .progress-bar { height: 100%; background: var(--orange); border-radius: 2px; animation: progress 3s ease-in-out forwards; }
-  @keyframes progress { from { width: 0%; } to { width: 92%; } }
-  .loading-steps { display: flex; flex-direction: column; gap: 8px; align-items: center; }
-  .loading-step { font-size: 12px; font-family: 'DM Mono', monospace; color: var(--muted); display: flex; align-items: center; gap: 8px; }
-  .loading-step.active { color: var(--orange2); }
-  .loading-step.done { color: #4caf80; }
-  .spinner { width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.1); border-top-color: var(--orange2); border-radius: 50%; animation: spin 0.8s linear infinite; display: inline-block; }
-  @keyframes spin { to { transform: rotate(360deg); } }
-
-  /* ─── ESTIMATE OUTPUT ─── */
-  .estimate-output {
-    background: white;
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    overflow: hidden;
-    box-shadow: var(--shadow-lg);
-  }
-
-  .est-header {
-    background: var(--ink);
-    padding: 0;
-    position: relative;
-    overflow: hidden;
-  }
-  .est-header-bar { height: 5px; background: var(--orange); }
-  .est-header-inner { padding: 28px 36px; display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; }
-  .est-company { }
-  .est-company-name { font-family: 'Bebas Neue', sans-serif; font-size: 32px; color: white; letter-spacing: 4px; line-height: 1; }
-  .est-company-sub { font-size: 11px; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; margin-top: 4px; }
-  .est-title-block { text-align: right; }
-  .est-doc-title { font-family: 'Bebas Neue', sans-serif; font-size: 26px; color: var(--orange); letter-spacing: 3px; }
-  .est-doc-num { font-family: 'DM Mono', monospace; font-size: 13px; color: var(--muted); margin-top: 4px; }
-
-  .est-meta {
-    background: var(--ink2);
-    padding: 0 36px;
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    border-top: 1px solid rgba(255,255,255,0.06);
-  }
-  .est-meta-item { padding: 14px 0; border-right: 1px solid rgba(255,255,255,0.06); padding-right: 24px; margin-right: 24px; }
-  .est-meta-item:last-child { border-right: none; }
-  .est-meta-label { font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); font-family: 'DM Mono', monospace; margin-bottom: 4px; }
-  .est-meta-val { font-size: 13px; color: white; font-weight: 500; }
-
-  /* Vendor info */
-  .est-vendor-bar {
-    background: rgba(232,82,10,0.08);
-    border-bottom: 1px solid rgba(232,82,10,0.15);
-    padding: 10px 36px;
-    display: flex; gap: 32px; align-items: center;
-  }
-  .est-vendor-label { font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: var(--orange); font-family: 'DM Mono', monospace; }
-  .est-vendor-val { font-size: 13px; color: var(--ink); font-weight: 500; }
-  .est-vendor-item { display: flex; flex-direction: column; gap: 2px; }
-
-  /* Table */
-  .est-table-wrap { overflow-x: auto; }
-  .est-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-  .est-table thead tr { background: var(--steel); }
-  .est-table thead th {
-    padding: 10px 12px;
-    text-align: left;
-    font-family: 'DM Mono', monospace;
-    font-size: 9px;
-    letter-spacing: 1.5px;
-    text-transform: uppercase;
-    color: rgba(255,255,255,0.7);
-    font-weight: 500;
-    white-space: nowrap;
-  }
-  .est-table thead th.right { text-align: right; }
-  .est-table tbody tr { border-bottom: 1px solid var(--border); transition: background 0.1s; }
-  .est-table tbody tr:hover { background: rgba(232,82,10,0.03); }
-  .est-table tbody tr:nth-child(even) { background: #fafbfd; }
-  .est-table tbody tr:nth-child(even):hover { background: rgba(232,82,10,0.04); }
-  .est-table td { padding: 10px 12px; vertical-align: top; color: var(--ink); }
-  .est-table td.right { text-align: right; font-family: 'DM Mono', monospace; }
-  .est-table td.mono { font-family: 'DM Mono', monospace; font-size: 11px; }
-  .item-num { background: var(--steel); color: white; width: 22px; height: 22px; border-radius: 2px; display: flex; align-items: center; justify-content: center; font-family: 'DM Mono', monospace; font-size: 10px; font-weight: 600; }
-  .item-desc { font-weight: 500; color: var(--ink); line-height: 1.4; }
-  .item-specs { font-size: 11px; color: var(--mid); font-family: 'DM Mono', monospace; margin-top: 2px; line-height: 1.5; }
-  .flag-badge { display: inline-block; background: rgba(192,57,43,0.1); border: 1px solid rgba(192,57,43,0.3); color: var(--red); font-size: 9px; padding: 1px 6px; border-radius: 2px; font-family: 'DM Mono', monospace; letter-spacing: 1px; margin-top: 3px; }
-  .price-vendor { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--muted); }
-  .price-client { font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 600; color: var(--ink); }
-  .price-total { font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 700; color: var(--orange); }
-
-  /* Summary */
-  .est-summary {
-    display: flex; justify-content: flex-end;
-    padding: 24px 36px;
-    border-top: 2px solid var(--border);
-    background: var(--surface);
-  }
-  .est-summary-table { width: 300px; }
-  .est-sum-row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 13px; border-bottom: 1px solid var(--border); }
-  .est-sum-row:last-child { border-bottom: none; }
-  .est-sum-label { color: var(--mid); }
-  .est-sum-val { font-family: 'DM Mono', monospace; font-weight: 500; }
-  .est-sum-row.total { padding-top: 12px; }
-  .est-sum-row.total .est-sum-label { font-weight: 700; font-size: 14px; color: var(--ink); }
-  .est-sum-row.total .est-sum-val { font-size: 18px; color: var(--orange); font-weight: 700; }
-
-  /* Terms */
-  .est-terms {
-    background: var(--ink);
-    padding: 20px 36px;
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 12px 32px;
-  }
-  .est-term { }
-  .est-term-label { font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--orange); font-family: 'DM Mono', monospace; margin-bottom: 3px; }
-  .est-term-val { font-size: 12px; color: rgba(255,255,255,0.75); line-height: 1.4; }
-
-  .est-footer {
-    background: var(--ink2);
-    padding: 12px 36px;
-    display: flex; align-items: center; justify-content: space-between;
-    border-top: 1px solid rgba(255,255,255,0.06);
-  }
-  .est-footer-left { font-size: 10px; color: var(--muted); font-family: 'DM Mono', monospace; }
-  .est-footer-right { font-size: 10px; color: rgba(255,255,255,0.3); font-family: 'DM Mono', monospace; }
-  .est-footer-bar { height: 3px; background: linear-gradient(90deg, var(--orange), var(--gold)); }
-
-  /* Flags panel */
-  .flags-panel {
-    background: rgba(192,57,43,0.06);
-    border: 1px solid rgba(192,57,43,0.2);
-    border-radius: 4px;
-    padding: 16px 20px;
-    margin: 0 36px 0;
-  }
-  .flags-title { font-size: 10px; font-family: 'DM Mono', monospace; letter-spacing: 2px; text-transform: uppercase; color: var(--red); margin-bottom: 10px; font-weight: 600; }
-  .flag-item { font-size: 12px; color: var(--ink2); padding: 4px 0; display: flex; gap: 8px; align-items: flex-start; }
-  .flag-dot { color: var(--red); font-size: 16px; line-height: 1; }
-
-  /* Actions */
-  .actions-row { display: flex; gap: 12px; padding: 24px 0 0; flex-wrap: wrap; }
-  .btn-secondary {
-    padding: 12px 24px; border-radius: 3px;
-    font-family: 'Bebas Neue', sans-serif; font-size: 15px; letter-spacing: 2px;
-    cursor: pointer; transition: all 0.15s; border: 1.5px solid;
-    display: flex; align-items: center; gap: 8px;
-  }
-  .btn-outline-white { background: transparent; border-color: rgba(255,255,255,0.2); color: white; }
-  .btn-outline-white:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.4); }
-  .btn-outline-orange { background: transparent; border-color: var(--orange); color: var(--orange); }
-  .btn-outline-orange:hover { background: var(--orange); color: white; }
-  .btn-solid { background: var(--orange); border-color: var(--orange); color: white; }
-  .btn-solid:hover { background: var(--orange2); }
-
-  .error-box {
-    background: rgba(192,57,43,0.1); border: 1px solid rgba(192,57,43,0.3);
-    border-radius: 4px; padding: 16px 20px; margin-bottom: 24px;
-    font-size: 13px; color: var(--red);
-  }
-
-  /* Standards badges */
-  .std-badges { display: flex; flex-wrap: wrap; gap: 6px; padding: 12px 36px 16px; background: var(--surface); border-top: 1px solid var(--border); }
-  .std-badge { background: rgba(42,58,82,0.1); border: 1px solid rgba(42,58,82,0.25); color: var(--steel); font-size: 9px; font-family: 'DM Mono', monospace; letter-spacing: 1px; padding: 3px 8px; border-radius: 2px; }
-  .std-badge-title { font-size: 9px; color: var(--muted); font-family: 'DM Mono', monospace; letter-spacing: 1px; text-transform: uppercase; align-self: center; }
-`;
-
-    // ─── Google API Config ──────────────────────────────────────────────────────
-    const CLIENT_ID = '426683158199-u0u1dh5o9m99phbk92r4dne8lgd0vmvp.apps.googleusercontent.com';
-    const SPREADSHEET_ID = '1afPoLLfBnNywzzHmu26-MxeiTD-6rFZCotN9h_gb8_k';
-    const SCOPES = 'https://www.googleapis.com/auth/spreadsheets.readonly';
-    const DISCOVERY_DOCS = ['https://sheets.googleapis.com/$discovery/rest?version=v4'];
-
-    let globalTokenClient;
-
-    // ─── Helpers ───────────────────────────────────────────────────────────────
-    function fmt(n, currency = "USD") {
-      if (n == null || n === "" || isNaN(Number(n))) return "—";
-      return new Intl.NumberFormat("en-CA", { style: "currency", currency, minimumFractionDigits: 2 }).format(Number(n));
-    }
-
-    function today() {
-      return new Date().toLocaleDateString("en-CA", { year: "numeric", month: "long", day: "numeric" });
-    }
-    function validUntil() {
-      const d = new Date(); d.setDate(d.getDate() + 30);
-      return d.toLocaleDateString("en-CA", { year: "numeric", month: "long", day: "numeric" });
-    }
-
-    // ─── AI extraction ─────────────────────────────────────────────────────────
-    async function extractFromPDF(base64PDF, projectInfo) {
-      const systemPrompt = `You are a procurement data extraction specialist for JCFalke Inc., an industrial valve/piping procurement company serving oil & gas.
-
-Extract all data from the vendor quote PDF and return ONLY valid JSON. No markdown, no preamble.
-
-JSON structure:
-{
-  "vendor": {
-    "name": "string",
-    "contact": "string or null",
-    "email": "string or null",
-    "phone": "string or null",
-    "quoteNumber": "string or null",
-    "quoteDate": "string or null",
-    "validityDays": number or null,
-    "paymentTerms": "string or null",
-    "deliveryTerms": "string or null",
-    "currency": "USD or CAD or EUR"
-  },
-  "lineItems": [
-    {
-      "itemNo": "string",
-      "description": "string - full product name",
-      "specs": "string - all technical specs: size, rating, material, standard, end connections, pressure class, body/trim material, etc.",
-      "qty": number,
-      "uom": "string e.g. EA, PCS, LT, SET",
-      "unitPrice": number or null,
-      "leadTimeDays": number or null,
-      "leadTimeText": "string e.g. 8-10 weeks",
-      "manufacturer": "string or null",
-      "notes": "string or null",
-      "flags": ["list of issues: missing price, missing lead time, missing specs, needs clarification, etc."]
-    }
-  ],
-  "freight": number or null,
-  "otherFees": number or null,
-  "notes": "string - any important quote notes",
-  "standards": ["list of standards mentioned: ASME B31.3, API 6D, etc."],
-  "warnings": ["critical issues with this quote that need attention"]
-}
-
-Be thorough with specs - extract every technical detail. If info is missing, add it to flags.`;
-
-      const userMsg = `Extract all data from this vendor quote PDF. Project context: ${projectInfo}`;
-
-      const apiKey = localStorage.getItem("jcf_anthropic_key");
-      if (!apiKey) throw new Error("API Key missing. Please reset the app.");
-
-      const response = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": apiKey,
-          "anthropic-version": "2023-06-01",
-          "anthropic-cors-bypass": "true" // Required if running directly from a browser without a proxy
-        },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 4000,
-          system: systemPrompt,
-          messages: [{
-            role: "user",
-            content: [
-              { type: "document", source: { type: "base64", media_type: "application/pdf", data: base64PDF } },
-              { type: "text", text: userMsg }
-            ]
-          }]
-        })
-      });
-
-      if (!response.ok) throw new Error(`API error: ${response.status}`);
-      const data = await response.json();
-      const text = data.content.find(b => b.type === "text")?.text || "";
-      const clean = text.replace(/```json|```/g, "").trim();
-      return JSON.parse(clean);
-    }
-
-    // ─── Loading Steps Component ────────────────────────────────────────────────
-    function LoadingState({ step }) {
-      const steps = [
-        { label: "Reading PDF document..." },
-        { label: "Extracting vendor information..." },
-        { label: "Parsing line items & specs..." },
-        { label: "Identifying standards & compliance..." },
-        { label: "Applying markup & calculating pricing..." },
-        { label: "Generating client estimate..." },
-      ];
-      return (
-        <div className="loading-card">
-          <div className="loading-title">GENERATING ESTIMATE</div>
-          <div className="loading-sub">AI is processing your vendor quote</div>
-          <div className="progress-bar-wrap"><div className="progress-bar" /></div>
-          <div className="loading-steps">
-            {steps.map((s, i) => (
-              <div key={i} className={`loading-step ${i === step ? "active" : i < step ? "done" : ""}`}>
-                {i < step ? "✓" : i === step ? <span className="spinner" /> : "○"}
-                {s.label}
-              </div>
-            ))}
-          </div>
+  <!-- App Container -->
+  <div id="app" class="hidden">
+    <header class="glass-header">
+      <div class="header-left">
+        <div class="logo">
+          <div class="logo-icon">JH</div>
+          <h1>JCFalke Contact Hub</h1>
         </div>
-      );
-    }
-
-    // ─── Estimate Display ───────────────────────────────────────────────────────
-    function EstimateDisplay({ estimate, form }) {
-      const markup = parseFloat(form.markup) / 100 || 0.20;
-      const currency = form.currency || "USD";
-
-      const lines = estimate.lineItems || [];
-      const subtotalVendor = lines.reduce((s, l) => s + (l.qty || 0) * (l.unitPrice || 0), 0);
-      const subtotalClient = lines.reduce((s, l) => s + (l.qty || 0) * (l.unitPrice || 0) * (1 + markup), 0);
-      const freight = estimate.freight ? estimate.freight * (1 + markup) : 0;
-      const other = estimate.otherFees ? estimate.otherFees * (1 + markup) : 0;
-      const total = subtotalClient + freight + other;
-
-      const flags = lines.flatMap(l => (l.flags || []).map(f => `Item ${l.itemNo}: ${f}`));
-      const warnings = estimate.warnings || [];
-      const allFlags = [...warnings, ...flags];
-
-      const clientNameSafe = form.clientName ? form.clientName.replace(/[^a-zA-Z0-9]/g, '').substring(0, 4).toUpperCase() : "CLIENT";
-      const countrySafe = form.country ? form.country.replace(/[^a-zA-Z]/g, '').substring(0, 3).toUpperCase() : "UNK";
-      const d = new Date();
-      const dateStr = `${String(d.getDate()).padStart(2, '0')}${String(d.getMonth() + 1).padStart(2, '0')}${d.getFullYear()}`;
-
-      const estNum = `EST-${clientNameSafe}-${dateStr}-${countrySafe}`;
-
-      return (
-        <div>
-          <div className="estimate-output">
-            <div className="est-header">
-              <div className="est-header-bar" />
-              <div className="est-header-inner">
-                <div className="est-company">
-                  <div className="est-company-name">JCFalke Inc.</div>
-                  <div className="est-company-sub">Industrial Commissioning · Valve & Piping Procurement · Oil & Gas</div>
-                </div>
-                <div className="est-title-block">
-                  <div className="est-doc-title">Client Estimate</div>
-                  <div className="est-doc-num">{estNum} · Rev 0</div>
-                </div>
-              </div>
-            </div>
-
-            <div className="est-meta">
-              {[
-                { label: "Client", val: form.clientName || "—" },
-                { label: "Address", val: form.address || "—" },
-                { label: "Project", val: form.projectName || "—" },
-                { label: "Attention", val: form.contactName || "—" },
-                { label: "Estimate Date", val: today() },
-                { label: "Valid Until", val: validUntil() },
-                { label: "Currency", val: currency },
-              ].map((m, i) => (
-                <div key={i} className="est-meta-item">
-                  <div className="est-meta-label">{m.label}</div>
-                  <div className="est-meta-val">{m.val}</div>
-                </div>
-              ))}
-            </div>
-
-            <div className="est-vendor-bar">
-              <div className="est-vendor-item"><div className="est-vendor-label">Vendor</div><div className="est-vendor-val">{estimate.vendor?.name || "—"}</div></div>
-              <div className="est-vendor-item"><div className="est-vendor-label">Quote #</div><div className="est-vendor-val">{estimate.vendor?.quoteNumber || "—"}</div></div>
-              <div className="est-vendor-item"><div className="est-vendor-label">Quote Date</div><div className="est-vendor-val">{estimate.vendor?.quoteDate || "—"}</div></div>
-              <div className="est-vendor-item"><div className="est-vendor-label">Vendor Currency</div><div className="est-vendor-val">{estimate.vendor?.currency || "USD"}</div></div>
-              {form.poNumber && <div className="est-vendor-item"><div className="est-vendor-label">PO / RFQ #</div><div className="est-vendor-val">{form.poNumber}</div></div>}
-            </div>
-
-            <div className="est-table-wrap">
-              <table className="est-table">
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th>Description</th>
-                    <th>Technical Specs</th>
-                    <th className="right">Qty</th>
-                    <th>UOM</th>
-                    <th className="right">Vendor Price</th>
-                    <th className="right">Client Unit</th>
-                    <th className="right">Lead Time</th>
-                    <th>Mfr.</th>
-                    <th className="right">Line Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {lines.map((item, i) => {
-                    const clientUnit = (item.unitPrice || 0) * (1 + markup);
-                    const lineTotal = (item.qty || 0) * clientUnit;
-                    const hasFlags = item.flags && item.flags.length > 0;
-                    return (
-                      <tr key={i}>
-                        <td><div className="item-num">{item.itemNo || i + 1}</div></td>
-                        <td>
-                          <div className="item-desc">{item.description}</div>
-                          {hasFlags && item.flags.map((f, fi) => <div key={fi} className="flag-badge">⚠ {f}</div>)}
-                        </td>
-                        <td><div className="item-specs">{item.specs || "—"}</div></td>
-                        <td className="right mono">{item.qty ?? "—"}</td>
-                        <td className="mono">{item.uom || "EA"}</td>
-                        <td className="right"><div className="price-vendor">{fmt(item.unitPrice, currency)}</div></td>
-                        <td className="right"><div className="price-client">{item.unitPrice ? fmt(clientUnit, currency) : "—"}</div></td>
-                        <td className="right mono">{item.leadTimeText || (item.leadTimeDays ? `${item.leadTimeDays}d` : "—")}</td>
-                        <td className="mono" style={{ fontSize: "11px" }}>{item.manufacturer || "—"}</td>
-                        <td className="right"><div className="price-total">{item.unitPrice && item.qty ? fmt(lineTotal, currency) : "—"}</div></td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-
-            {estimate.standards && estimate.standards.length > 0 && (
-              <div className="std-badges">
-                <span className="std-badge-title">Standards:</span>
-                {estimate.standards.map((s, i) => <span key={i} className="std-badge">{s}</span>)}
-              </div>
-            )}
-
-            {allFlags.length > 0 && (
-              <div style={{ padding: "16px 36px 0" }}>
-                <div className="flags-panel">
-                  <div className="flags-title">⚠ Items Requiring Attention ({allFlags.length})</div>
-                  {allFlags.map((f, i) => <div key={i} className="flag-item"><span className="flag-dot">•</span>{f}</div>)}
-                </div>
-              </div>
-            )}
-
-            <div className="est-summary">
-              <div className="est-summary-table">
-                <div className="est-sum-row"><span className="est-sum-label">Subtotal (Vendor)</span><span className="est-sum-val" style={{ color: "var(--muted)" }}>{fmt(subtotalVendor, currency)}</span></div>
-                <div className="est-sum-row"><span className="est-sum-label">Markup ({Math.round(markup * 100)}%)</span><span className="est-sum-val">{fmt(subtotalClient - subtotalVendor, currency)}</span></div>
-                <div className="est-sum-row"><span className="est-sum-label">Subtotal (Client)</span><span className="est-sum-val">{fmt(subtotalClient, currency)}</span></div>
-                {freight > 0 && <div className="est-sum-row"><span className="est-sum-label">Freight / Shipping</span><span className="est-sum-val">{fmt(freight, currency)}</span></div>}
-                {other > 0 && <div className="est-sum-row"><span className="est-sum-label">Other Fees</span><span className="est-sum-val">{fmt(other, currency)}</span></div>}
-                <div className="est-sum-row"><span className="est-sum-label">Taxes</span><span className="est-sum-val">TBD</span></div>
-                <div className="est-sum-row total"><span className="est-sum-label">TOTAL ESTIMATE</span><span className="est-sum-val">{fmt(total, currency)}</span></div>
-              </div>
-            </div>
-
-            <div className="est-terms">
-              {[
-                { label: "Payment Terms", val: "Net 30 days from invoice date" },
-                { label: "Delivery Terms", val: "FOB Destination — JCFalke Inc., Calgary, AB" },
-                { label: "Price Validity", val: "30 days from estimate date" },
-                { label: "Warranty", val: "Manufacturer standard; minimum 12 months" },
-                { label: "Vendor Payment Terms", val: estimate.vendor?.paymentTerms || "Per vendor quote" },
-                { label: "Notes", val: estimate.notes || "All items subject to final engineering review. Lead times are estimates only." },
-              ].map((t, i) => (
-                <div key={i} className="est-term">
-                  <div className="est-term-label">{t.label}</div>
-                  <div className="est-term-val">{t.val}</div>
-                </div>
-              ))}
-            </div>
-
-            <div className="est-footer">
-              <div className="est-footer-left">Prepared by JCFalke Procurement · Confidential</div>
-              <div className="est-footer-right">{estNum} · Generated {today()}</div>
-            </div>
-            <div className="est-footer-bar" />
-          </div>
-
-          <div className="actions-row">
-            <button className="btn-secondary btn-solid" onClick={() => window.print()}>🖨 Print / Save PDF</button>
-            <button className="btn-secondary btn-outline-orange" onClick={() => {
-              const rows = [["Item", "Description", "Specs", "Qty", "UOM", "Vendor Unit", "Client Unit", "Line Total", "Lead Time", "Manufacturer", "Notes"]];
-              (estimate.lineItems || []).forEach(l => {
-                const cu = (l.unitPrice || 0) * (1 + (parseFloat(form.markup) / 100 || 0.20));
-                rows.push([l.itemNo, l.description, l.specs, l.qty, l.uom, l.unitPrice, cu.toFixed(2), (l.qty * cu).toFixed(2), l.leadTimeText, l.manufacturer, l.notes]);
-              });
-              const csv = rows.map(r => r.map(v => `"${String(v || "").replace(/"/g, '""')}"`).join(",")).join("\n");
-              const blob = new Blob([csv], { type: "text/csv" });
-              const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
-              a.download = `JCF-Estimate-${form.clientName || "client"}.csv`; a.click();
-            }}>⬇ Export CSV</button>
-          </div>
+      </div>
+      <div class="header-right">
+        <div class="user-profile">
+          <img id="userAvatar" src="https://ui-avatars.com/api/?name=User&background=random" alt="User Avatar"
+            class="avatar">
+          <span id="userName">User</span>
         </div>
-      );
-    }
+        <button id="signOutBtn" class="btn btn-outline">Sign Out</button>
+      </div>
+    </header>
 
-    // ─── Main App ───────────────────────────────────────────────────────────────
-    function App() {
-      const [apiKey, setApiKey] = useState(() => localStorage.getItem("jcf_anthropic_key") || "");
-      const [isLocked, setIsLocked] = useState(!localStorage.getItem("jcf_anthropic_key"));
+    <main class="main-content">
+      <div class="toolbar glass-panel">
+        <div class="search-wrap">
+          <input type="text" id="searchInput" placeholder="Search contacts by name, company, or country..."
+            class="input search-input">
+        </div>
 
-      const [form, setForm] = useState({ clientName: "", address: "", projectName: "", contactName: "", poNumber: "", country: "", markup: "20", currency: "USD", notes: "" });
-      const [pdfFile, setPdfFile] = useState(null);
-      const [pdfBase64, setPdfBase64] = useState(null);
-      const [dragging, setDragging] = useState(false);
-      const [loading, setLoading] = useState(false);
-      const [loadStep, setLoadStep] = useState(0);
-      const [estimate, setEstimate] = useState(null);
-      const [error, setError] = useState(null);
+        <div class="filter-wrap">
+          <select id="typeFilter" class="input filter-select">
+            <option value="All">All Types</option>
+            <option value="Client">Client</option>
+            <option value="Supplier">Supplier</option>
+          </select>
+        </div>
 
-      const [contacts, setContacts] = useState([]);
-      const [isAuthenticated, setIsAuthenticated] = useState(false);
-      const [gapiReady, setGapiReady] = useState(false);
-      const fileRef = useRef();
+        <div class="actions-wrap">
+          <button id="btnPasteContact" class="btn btn-secondary">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>
+            Paste Info
+          </button>
+          <button id="btnAddContact" class="btn btn-primary">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            Add Contact
+          </button>
+        </div>
+      </div>
 
-      useEffect(() => {
-        const initGoogleAPI = async () => {
-          try {
-            await new Promise((resolve, reject) => {
-              gapi.load('client', { callback: resolve, onerror: reject });
-            });
-            await gapi.client.init({
-              discoveryDocs: DISCOVERY_DOCS,
-            });
-            globalTokenClient = google.accounts.oauth2.initTokenClient({
-              client_id: CLIENT_ID,
-              scope: SCOPES,
-              callback: '', // defined dynamically later
-            });
-            setGapiReady(true);
-          } catch (err) {
-            console.error("Failed to initialize Google API:", err);
-          }
-        };
+      <div id="loading" class="loading-spinner hidden">
+        <div class="spinner"></div>
+      </div>
 
-        // Poll for gapi and google.accounts
-        const attemptInit = setInterval(() => {
-          if (window.gapi && window.google) {
-            clearInterval(attemptInit);
-            initGoogleAPI();
-          }
-        }, 100);
+      <div class="contacts-grid" id="contactsGrid">
+        <!-- Contacts injected here -->
+      </div>
+    </main>
+  </div>
 
-        return () => clearInterval(attemptInit);
-      }, []);
+  <!-- Login Screen -->
+  <div id="loginScreen" class="login-screen">
+    <div class="login-card glass-panel">
+      <div class="logo-large">
+        <div class="logo-icon large">JH</div>
+      </div>
+      <h2>Welcome Back</h2>
+      <p>Sign in to access the JCFalke Contact Hub and sync with Google Sheets.</p>
+      <button id="googleLoginBtn" onclick="window.handleAuthClick(event)" class="btn btn-outline mt-4 w-full"
+        style="justify-content: center; border-color: #4285F4; color: #4285F4; cursor: pointer;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="margin-right: 8px;">
+          <path
+            d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+            fill="#4285F4" />
+          <path
+            d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+            fill="#34A853" />
+          <path
+            d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+            fill="#FBBC05" />
+          <path
+            d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+            fill="#EA4335" />
+        </svg>
+        Sign in with Google
+      </button>
+      <!-- Placeholder button while Client ID is missing -->
+      <button id="devLoginBtn" class="btn btn-primary mt-4 w-full">Developer Login (Bypass API)</button>
+    </div>
+  </div>
 
-      const handleAuthClick = () => {
-        if (!gapiReady || !globalTokenClient) return;
-        globalTokenClient.callback = async (resp) => {
-          if (resp.error !== undefined) {
-            console.error(resp.error);
-            return;
-          }
-          setIsAuthenticated(true);
-          await fetchContacts();
-        };
+  <!-- Modals -->
 
-        if (gapi.client.getToken() === null) {
-          globalTokenClient.requestAccessToken({ prompt: 'consent' });
-        } else {
-          globalTokenClient.requestAccessToken({ prompt: '' });
-        }
-      };
+  <!-- Add Contact Modal -->
+  <div id="addModal" class="modal-overlay hidden">
+    <div class="modal glass-panel">
+      <div class="modal-header">
+        <h3 id="modalTitle">Add New Contact</h3>
+        <button class="close-btn" id="btnCloseAddModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="contactForm" class="contact-form">
+          <input type="hidden" id="contactRowIndex">
 
-      const fetchContacts = async () => {
-        try {
-          const response = await gapi.client.sheets.spreadsheets.values.get({
-            spreadsheetId: SPREADSHEET_ID,
-            range: 'Contacts!A2:G',
-          });
-          const rows = response.result.values;
-          if (rows && rows.length > 0) {
-            const mappedContacts = rows.map((r, i) => ({
-              uid: 'contact-' + i,
-              contactName: r[0] || "", // Name (A)
-              clientName: r[1] || "",  // Company (B)
-              email: r[2] || "",       // Email (C)
-              phone: r[3] || "",       // Phone (D)
-              type: r[4] || "",        // Type (E)
-              address: r[5] || "",     // Address (F)
-              country: r[6] || "",     // Country (G)
-            })).filter(c => c.clientName || c.contactName);
-            setContacts(mappedContacts);
-          }
-        } catch (err) {
-          console.error("Error fetching contacts:", err);
-          setError("Failed to fetch contacts from Hub.");
-        }
-      };
-
-      const onSelectContact = (e) => {
-        const selectedId = e.target.value;
-        const c = contacts.find(c => c.uid === selectedId);
-        if (c) {
-          setForm(f => ({
-            ...f,
-            clientName: c.clientName,
-            address: c.address,
-            contactName: c.contactName,
-            country: c.country || f.country, // use existing if not available
-          }));
-        }
-      };
-
-      const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
-
-      const handleFile = useCallback((file) => {
-        if (!file || file.type !== "application/pdf") { setError("Please upload a PDF file."); return; }
-        setPdfFile(file);
-        const reader = new FileReader();
-        reader.onload = (e) => setPdfBase64(e.target.result.split(",")[1]);
-        reader.readAsDataURL(file);
-        setError(null);
-      }, []);
-
-      const onDrop = useCallback((e) => {
-        e.preventDefault(); setDragging(false);
-        handleFile(e.dataTransfer.files[0]);
-      }, [handleFile]);
-
-      const generate = async () => {
-        if (!pdfBase64) { setError("Please upload a vendor quote PDF first."); return; }
-        if (!form.clientName) { setError("Please enter the client name."); return; }
-        setError(null); setEstimate(null); setLoading(true); setLoadStep(0);
-
-        const stepTimings = [600, 800, 900, 600, 500, 400];
-        let step = 0;
-        const advance = () => { if (step < 5) { step++; setLoadStep(step); } };
-        const timers = stepTimings.map((t, i) => setTimeout(() => { step = i + 1; setLoadStep(i + 1); }, stepTimings.slice(0, i + 1).reduce((a, b) => a + b, 0)));
-
-        try {
-          const projectInfo = `Client: ${form.clientName}, Country: ${form.country}, Project: ${form.projectName}, Contact: ${form.contactName}, PO/RFQ: ${form.poNumber}, Currency: ${form.currency}`;
-          const result = await extractFromPDF(pdfBase64, projectInfo);
-          timers.forEach(clearTimeout);
-          setLoadStep(5);
-          await new Promise(r => setTimeout(r, 400));
-          setEstimate(result);
-        } catch (err) {
-          timers.forEach(clearTimeout);
-          setError("Error processing PDF: " + err.message + ". Please check the file and try again.");
-        } finally {
-          setLoading(false);
-        }
-      };
-
-      const handleKeySave = () => {
-        if (!apiKey.trim()) {
-          alert("Please enter a valid Anthropic API key.");
-          return;
-        }
-        localStorage.setItem("jcf_anthropic_key", apiKey.trim());
-        setIsLocked(false);
-      };
-
-      const handleKeyReset = () => {
-        localStorage.removeItem("jcf_anthropic_key");
-        setApiKey("");
-        setIsLocked(true);
-      };
-
-      if (isLocked) {
-        return (
-          <>
-            <style>{STYLES}</style>
-            <div className="login-screen" style={{ opacity: 1, pointerEvents: 'auto', zIndex: 9999, display: 'flex', flexDirection: 'column', padding: '24px' }}>
-              <div className="glass-panel login-card" style={{ padding: '40px', maxWidth: '480px', margin: 'auto', background: 'rgba(30, 41, 59, 0.95)' }}>
-                <div className="logo-group" style={{ justifyContent: 'center', marginBottom: '24px' }}>
-                  <div className="logo-mark" style={{ background: 'var(--orange)' }}><span>JCF</span></div>
-                </div>
-                <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '32px', letterSpacing: '2px', color: 'white', marginBottom: '16px' }}>ESTIMATE GENERATOR<br /><span style={{ color: 'var(--orange)', fontSize: '24px' }}>AUTHORIZED ACCESS ONLY</span></h2>
-                <p style={{ color: 'var(--muted)', fontSize: '14px', marginBottom: '32px', lineHeight: 1.5 }}>
-                  To securely use the AI extraction engine, please enter the JCFalke Anthropic API Key.
-                  This key is stored locally on your device and is never sent to our servers.
-                </p>
-                <div className="form-group" style={{ marginBottom: '24px', textAlign: 'left' }}>
-                  <label style={{ fontSize: '11px', fontFamily: "'DM Mono', monospace", color: 'var(--mid)', textTransform: 'uppercase', letterSpacing: '1px' }}>Anthropic API Key (sk-ant...)</label>
-                  <input
-                    type="password"
-                    className="input"
-                    value={apiKey}
-                    onChange={(e) => setApiKey(e.target.value)}
-                    placeholder="sk-ant-api03-..."
-                    style={{ width: '100%', padding: '12px', background: 'rgba(15, 23, 42, 0.8)', border: '1px solid var(--border)', color: 'white', borderRadius: '4px', marginTop: '8px', fontFamily: "'DM Mono', monospace" }}
-                  />
-                </div>
-                <button
-                  className="gen-btn"
-                  onClick={handleKeySave}
-                  style={{ width: '100%' }}
-                >
-                  UNLOCK ESTIMATOR &rarr;
-                </button>
-              </div>
-            </div>
-          </>
-        );
-      }
-
-      const currentStep = estimate ? 3 : pdfFile ? 2 : form.clientName ? 1 : 0;
-
-      return (
-        <>
-          <style>{STYLES}</style>
-          <div className="app">
-            <header className="header">
-              <div className="logo-group">
-                <div className="logo-mark"><span>JCF</span></div>
-                <div>
-                  <div className="logo-text">JCFalke</div>
-                  <div className="logo-sub">Estimate Generator</div>
-                </div>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                <div className="header-badge">Procurement Tool · v2.0</div>
-                <button
-                  onClick={handleKeyReset}
-                  style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.2)', padding: '6px 12px', color: 'var(--muted)', borderRadius: '4px', cursor: 'pointer', fontSize: '12px', transition: '0.2s' }}
-                  onMouseOver={(e) => { e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = '#fff'; }}
-                  onMouseOut={(e) => { e.currentTarget.style.color = 'var(--muted)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)'; }}
-                >
-                  🔒 Lock API key
-                </button>
-              </div>
-            </header>
-
-            <main className="main">
-              <div className="page-title">ESTIMATE<br /><span>GENERATOR</span></div>
-              <div className="page-subtitle">Load project details + vendor PDF → instant client-ready estimate</div>
-
-              <div className="steps-row">
-                {["Project Details", "Vendor Quote PDF", "Generate", "Estimate Ready"].map((s, i) => (
-                  <div key={i} className={`step-pill ${i < currentStep ? "done" : i === currentStep ? "active" : "pending"}`}>
-                    <span className="step-num">{i < currentStep ? "✓" : i + 1}</span>{s}
-                  </div>
-                ))}
-              </div>
-
-              {error && <div className="error-box">⚠ {error}</div>}
-
-              {/* ── Step 1: Project Info ── */}
-              <div className="card">
-                <div className="card-header">
-                  <div className="card-header-icon">①</div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
-                    <h3>Project Information</h3>
-                    {!isAuthenticated ? (
-                      <button onClick={handleAuthClick} className="btn-secondary btn-outline-white" style={{ fontSize: '10px', padding: '4px 8px', letterSpacing: '1px' }}>🔗 Connect Contact Hub</button>
-                    ) : (
-                      <span style={{ fontSize: '10px', color: '#4caf80', fontFamily: "'DM Mono', monospace", border: '1px solid #4caf80', padding: '2px 6px', borderRadius: '2px' }}>✓ Hub Connected</span>
-                    )}
-                  </div>
-                  <span>Client-facing details for the estimate header</span>
-                </div>
-                <div className="card-body">
-                  {isAuthenticated && contacts.length > 0 && (
-                    <div className="field" style={{ marginBottom: 24, paddingBottom: 24, borderBottom: '1px dashed var(--border)' }}>
-                      <label style={{ color: 'var(--orange)' }}>Load from Contact Hub</label>
-                      <select onChange={onSelectContact} defaultValue="">
-                        <option value="" disabled>Select a client contact to autofill...</option>
-                        {contacts.map(c => (
-                          <option key={c.uid} value={c.uid}>{c.clientName} {c.contactName ? `(${c.contactName})` : ''}</option>
-                        ))}
-                      </select>
-                    </div>
-                  )}
-                  <div className="grid-3" style={{ marginBottom: 16 }}>
-                    <div className="field">
-                      <label>Client Name *</label>
-                      <input placeholder="e.g. Suncor Energy Inc." value={form.clientName} onChange={e => set("clientName", e.target.value)} />
-                    </div>
-                    <div className="field">
-                      <label>Address</label>
-                      <input placeholder="e.g. 123 Main St, Calgary AB" value={form.address} onChange={e => set("address", e.target.value)} />
-                    </div>
-                    <div className="field">
-                      <label>Country *</label>
-                      <input placeholder="e.g. CAN, USA" value={form.country} onChange={e => set("country", e.target.value)} />
-                    </div>
-                  </div>
-                  <div className="grid-3" style={{ marginBottom: 16 }}>
-                    <div className="field">
-                      <label>Project Name</label>
-                      <input placeholder="e.g. Fort McMurray Expansion Phase 2" value={form.projectName} onChange={e => set("projectName", e.target.value)} />
-                    </div>
-                  </div>
-                  <div className="grid-3">
-                    <div className="field">
-                      <label>Attention / Contact</label>
-                      <input placeholder="e.g. John Smith" value={form.contactName} onChange={e => set("contactName", e.target.value)} />
-                    </div>
-                    <div className="field">
-                      <label>PO / RFQ #</label>
-                      <input placeholder="e.g. RFQ-2026-0045" value={form.poNumber} onChange={e => set("poNumber", e.target.value)} />
-                    </div>
-                    <div className="field">
-                      <label>Internal Notes</label>
-                      <input placeholder="Optional internal note" value={form.notes} onChange={e => set("notes", e.target.value)} />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* ── Step 2: PDF Upload ── */}
-              <div className="card">
-                <div className="card-header">
-                  <div className="card-header-icon">②</div>
-                  <h3>Vendor Quote PDF</h3>
-                  <span>Drop your supplier quote — AI will extract all data</span>
-                </div>
-                <div className="card-body">
-                  <div
-                    className={`drop-zone ${dragging ? "drag-over" : ""} ${pdfFile ? "has-file" : ""}`}
-                    onDragOver={e => { e.preventDefault(); setDragging(true); }}
-                    onDragLeave={() => setDragging(false)}
-                    onDrop={onDrop}
-                    onClick={() => !pdfFile && fileRef.current.click()}
-                  >
-                    <input ref={fileRef} type="file" accept="application/pdf" style={{ display: "none" }} onChange={e => handleFile(e.target.files[0])} />
-                    {pdfFile ? (
-                      <>
-                        <span className="drop-icon">✅</span>
-                        <div className="drop-title">PDF LOADED</div>
-                        <div className="drop-file-info">
-                          📄 {pdfFile.name} ({(pdfFile.size / 1024).toFixed(1)} KB)
-                          <button className="drop-file-remove" onClick={e => { e.stopPropagation(); setPdfFile(null); setPdfBase64(null); setEstimate(null); }}>✕</button>
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <span className="drop-icon">📄</span>
-                        <div className="drop-title">DROP PDF HERE</div>
-                        <div className="drop-sub">or click to browse · Vendor quote, RFQ response, or price list</div>
-                      </>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* ── Step 3: Pricing Config ── */}
-              <div className="card">
-                <div className="card-header">
-                  <div className="card-header-icon">③</div>
-                  <h3>Pricing Configuration</h3>
-                  <span>Markup & currency settings</span>
-                </div>
-                <div className="card-body" style={{ display: "flex", gap: 32, flexWrap: "wrap", alignItems: "center" }}>
-                  <div>
-                    <div style={{ fontSize: 11, fontFamily: "'DM Mono', monospace", letterSpacing: "1.5px", textTransform: "uppercase", color: "var(--mid)", marginBottom: 8 }}>Markup Percentage</div>
-                    <div className="markup-input-wrap">
-                      <input type="number" min="0" max="200" value={form.markup} onChange={e => set("markup", e.target.value)} />
-                      <div className="markup-unit">%</div>
-                    </div>
-                    <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 6 }}>Applied to all line items, freight & fees</div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 11, fontFamily: "'DM Mono', monospace", letterSpacing: "1.5px", textTransform: "uppercase", color: "var(--mid)", marginBottom: 8 }}>Output Currency</div>
-                    <div className="currency-row">
-                      {["USD", "CAD", "EUR"].map(c => (
-                        <button key={c} className={`currency-btn ${form.currency === c ? "active" : ""}`} onClick={() => set("currency", c)}>{c}</button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* ── Generate Button ── */}
-              {!estimate && (
-                <button className="gen-btn" onClick={generate} disabled={loading || !pdfBase64 || !form.clientName || !form.country}>
-                  {loading ? <><span className="spinner" /> Processing...</> : <>⚡ GENERATE CLIENT ESTIMATE</>}
-                  {!loading && <div className="gen-btn-shine" />}
-                </button>
-              )}
-
-              {/* ── Loading ── */}
-              {loading && <LoadingState step={loadStep} />}
-
-              {/* ── Output ── */}
-              {estimate && !loading && (
-                <>
-                  <div style={{ height: 32 }} />
-                  <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 20, color: "white", letterSpacing: 3, marginBottom: 16 }}>
-                    ✓ ESTIMATE GENERATED
-                  </div>
-                  <EstimateDisplay estimate={estimate} form={form} />
-                  <div style={{ marginTop: 24 }}>
-                    <button className="btn-secondary btn-outline-white" onClick={() => { setEstimate(null); setLoadStep(0); }}>
-                      ← Generate New Estimate
-                    </button>
-                  </div>
-                </>
-              )}
-            </main>
+          <div class="form-group">
+            <label>Name</label>
+            <input type="text" id="fName" class="input" required>
           </div>
-        </>
-      );
-    }
 
-    const root = ReactDOM.createRoot(document.getElementById('root'));
-    root.render(<App />);
-  </script>
+          <div class="form-group">
+            <label>Company</label>
+            <input type="text" id="fCompany" class="input" required>
+          </div>
+
+          <div class="form-group">
+            <label>Email</label>
+            <input type="email" id="fEmail" class="input" required>
+          </div>
+
+          <div class="form-group">
+            <label>Phone</label>
+            <input type="text" id="fPhone" class="input">
+          </div>
+
+          <div class="form-group">
+            <label>Type</label>
+            <select id="fType" class="input">
+              <option value="Client">Client</option>
+              <option value="Supplier">Supplier</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Supply / Items Provided</label>
+            <input type="text" id="fSupply" class="input" placeholder="e.g. Engine Parts">
+          </div>
+
+          <div class="form-group">
+            <label>Country</label>
+            <input type="text" id="fCountry" class="input">
+          </div>
+
+          <div class="form-group full-width">
+            <label>Address</label>
+            <input type="text" id="fAddress" class="input" placeholder="e.g. 123 Main St, City, State ZIP">
+          </div>
+
+          <div class="form-group">
+            <label>Year Registered</label>
+            <input type="number" id="fYear" class="input" min="1900" max="2100" placeholder="e.g. 2024">
+          </div>
+
+          <div class="form-group">
+            <label>Last Verified</label>
+            <input type="date" id="fVerified" class="input">
+          </div>
+
+          <div class="form-group full-width">
+            <label>Notes</label>
+            <textarea id="fNotes" class="input textarea" rows="3"></textarea>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button id="btnCancelAdd" class="btn btn-outline">Cancel</button>
+        <button id="btnSaveContact" class="btn btn-primary">Save to Drive</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Paste Contact Modal -->
+  <div id="pasteModal" class="modal-overlay hidden">
+    <div class="modal glass-panel">
+      <div class="modal-header">
+        <h3>Paste Contact Info</h3>
+        <button class="close-btn" id="btnClosePasteModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="text-sm text-gray mb-3">Paste a block of text (e.g. from an email signature) and we will try to
+          extract the details.</p>
+        <textarea id="pasteInput" class="input textarea mb-3" rows="6"
+          placeholder="John Doe&#10;Acme Corp&#10;john@acme.com&#10;+1 (555) 123-4567"></textarea>
+      </div>
+      <div class="modal-footer">
+        <button id="btnCancelPaste" class="btn btn-outline">Cancel</button>
+        <button id="btnParsePaste" class="btn btn-secondary">Extract & Review</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Google Identity and APIs -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script src="https://apis.google.com/js/api.js" async defer></script>
+
+  <script type="module" src="main.js"></script>
 </body>
 
 </html>
